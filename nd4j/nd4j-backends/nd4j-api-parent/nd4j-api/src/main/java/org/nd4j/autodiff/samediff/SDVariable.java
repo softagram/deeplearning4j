@@ -92,9 +92,7 @@ public class SDVariable extends DifferentialFunction implements Serializable {
 
         if(shape == null) {
             sameDiff.addAsPlaceHolder(varName);
-        }
-
-        else {
+        } else {
             boolean foundPlaceHolder = false;
             for(int i = 0; i < shape.length; i++) {
                 if(shape[i] < 0) {

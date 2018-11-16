@@ -10325,6 +10325,7 @@ public class SameDiff {
     public void removeAsPlaceholder(String varName) {
         placeHolderVarNames.remove(varName);
         placeHolderOriginalShapes.remove(varName);
+        placeHolderMap.remove(varName);
     }
 
 
@@ -10763,7 +10764,8 @@ public class SameDiff {
              */
             if (differentialFunction instanceof LoopCond) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of LoopCond op");
+                    log.trace("Starting execution of LoopCond op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 // this node just passes single input forward, for future evaluation
                 val inputs = getInputVariablesForFunction(differentialFunction);
@@ -10780,7 +10782,8 @@ public class SameDiff {
                 }
             } else if (differentialFunction instanceof Enter) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of Enter op");
+                    log.trace("Starting execution of Enter op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 //  if (flowPath.wasExecuted(differentialFunction.getOwnName()))
                 //      continue;
@@ -10812,7 +10815,8 @@ public class SameDiff {
 
             } else if (differentialFunction instanceof Exit) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of Exit op");
+                    log.trace("Starting execution of Exit op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 // this is just exit point of graph: it maps own input to own output or rewinds graph to specific position planned at first NextIteration node
 
@@ -10864,7 +10868,8 @@ public class SameDiff {
 
             } else if (differentialFunction instanceof NextIteration) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of NextIteration op");
+                    log.trace("Starting execution of NextIteration op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 // this operations merges own input, and schedules rewind to specific Merge node
                 val inputs = getInputVariablesForFunction(differentialFunction);
@@ -10893,7 +10898,8 @@ public class SameDiff {
 
             } else if (differentialFunction instanceof Merge) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of Merge op");
+                    log.trace("Starting execution of Merge op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 // merge operation takes two inputs, and saves one of them as own output.
                 // if SDVariable exists for second input - we use it. First input used otherwise
@@ -10952,7 +10958,8 @@ public class SameDiff {
                 flowPath.markExecuted(differentialFunction.getOwnName(), true);
             } else if (differentialFunction instanceof Switch) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of Switch op");
+                    log.trace("Starting execution of Switch op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 // switch takes 2 inputs: actual input and boolean scalar. If scalar is false, input is saved as output:0, if scalar is true, input is saved as output:1
                 ((CustomOp) differentialFunction).populateInputsAndOutputsFromSameDiff();
@@ -10998,7 +11005,8 @@ public class SameDiff {
                 flowPath.markExecuted(differentialFunction.getOwnName(), true);
             } else if (differentialFunction instanceof BaseTensorOp) {
                 //if(log.isTraceEnabled())
-                log.info("Starting execution of Tensor op [{}]", opName);
+                log.info("Starting execution of Tensor op with name {}, inputs variables {}, and output variables {}", opName,
+                        Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 // we just pull actual code out of
                 val list = ((BaseTensorOp) differentialFunction).execute(this);
@@ -11009,7 +11017,8 @@ public class SameDiff {
                 ops.add(differentialFunction);
             } else if (differentialFunction instanceof If) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of If op");
+                    log.trace("Starting execution of If op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 If ifOp = (If) differentialFunction;
                 if (!onBackward) {
@@ -11058,7 +11067,8 @@ public class SameDiff {
 
             } else if (differentialFunction instanceof While) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of While op");
+                    log.trace("Starting execution of While op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 While whileOp = (While) differentialFunction;
 
@@ -11133,7 +11143,8 @@ public class SameDiff {
 
             } else if (differentialFunction instanceof CustomOp) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of CustomOp op");
+                    log.trace("Starting execution of CustomOp op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
 
                 DynamicCustomOp customOp = (DynamicCustomOp) differentialFunction;
@@ -11175,7 +11186,8 @@ public class SameDiff {
                 ops.add(customOp);
             } else if (differentialFunction instanceof Op) {
                 if (log.isTraceEnabled())
-                    log.trace("Starting execution of Op op");
+                    log.trace("Starting execution of Op op with name {}, inputs variables {}, and output variables {}", differentialFunction.getOwnName(),
+                            Arrays.toString(getInputsForFunction(differentialFunction)), Arrays.toString(getOutputsForFunction(differentialFunction)));
 
                 val inputs = getInputVariablesForFunction(differentialFunction);
 
@@ -12159,6 +12171,11 @@ public class SameDiff {
     public void validateExecutionOrder(){
         //First: check order. SameDiff.exec() iterates over functionInstancesById (a linked hash map)
         Set<String> seen = new HashSet<>();
+        //Add all placeholders and constants - these are available at the start of execution
+        if(placeHolderVarNames != null)
+            seen.addAll(placeHolderVarNames);
+        if(importedConstants != null)
+            seen.addAll(importedConstants);
         boolean valid = true;
         for(Map.Entry<String,DifferentialFunction> e : functionInstancesById.entrySet()){
             String[] inputs = incomingArgsReverse.get(e.getKey());
@@ -12183,7 +12200,7 @@ public class SameDiff {
 
         if(!valid){
             //Need to re-order
-            //Algorithm here: add all ops to a queue. Take the first one for
+            //Algorithm here: add all ops to a queue. Take the first one as
             // this keeps the current order as much as possible
             // O(n) best case, O(n^2) worst case
             LinkedList<Map.Entry<String,DifferentialFunction>> queue = new LinkedList<>();
@@ -12199,13 +12216,15 @@ public class SameDiff {
                 seen.addAll(importedConstants);
             }
 
+            int execStep = 0;
             while(!queue.isEmpty()) {
                 Iterator<Map.Entry<String, DifferentialFunction>> iterator = queue.iterator();
                 boolean anySeen = false;
                 while (iterator.hasNext()) {
                     Map.Entry<String, DifferentialFunction> e = iterator.next();
                     boolean allSeen = true;
-                    for (String in : incomingArgsReverse.get(e.getKey())) {
+                    String[] fnInputs = incomingArgsReverse.get(e.getKey());
+                    for (String in : fnInputs) {
                         if (!seen.contains(in)) {
                             allSeen = false;
                             break;
@@ -12222,6 +12241,9 @@ public class SameDiff {
                         for(SDVariable s : outputVars){
                             seen.add(s.getVarName());
                         }
+                        log.trace("Added variable - execution step {}: {} - inputs {}, outputs {}", execStep, e.getKey(),
+                                Arrays.toString(incomingArgsReverse.get(e.getKey())), Arrays.toString(outputVars));
+                        execStep++;
                         break;  //Restart loop over remaining queue elements
                     }
                 }
@@ -12252,6 +12274,16 @@ public class SameDiff {
             }
 
             functionInstancesById = newMap;
+        }
+
+        if(log.isTraceEnabled()){
+            int i=0;
+            log.trace("New execution order:");
+            for(Map.Entry<String,DifferentialFunction> e : functionInstancesById.entrySet()){
+                String[] in = getInputsForFunction(e.getValue());
+                String[] out = getOutputsForFunction(e.getValue());
+                log.trace("{} - {} - inputs: {}, outputs: {}", (i++), e.getKey(), (in == null ? "null" : Arrays.toString(in)), (out == null ? "null" : Arrays.toString(out)) );
+            }
         }
     }
 
