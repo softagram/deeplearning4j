@@ -70,8 +70,9 @@ public class TFGraphTestZooModels {
             try {
                 String s = FileUtils.readFileToString(file, StandardCharsets.UTF_8).replaceAll("\r\n","\n");
                 String[] split = s.split("\n");
-                if(split.length != 2){
-                    throw new IllegalStateException("Invalid file: expected 2 lines with URL and MD5 hash. Got " + split.length + " lines");
+                if(split.length != 2 && split.length != 3){
+                    throw new IllegalStateException("Invalid file: expected 2 lines with URL and MD5 hash, or 3 lines with " +
+                            "URL, MD5 hash and file name. Got " + split.length + " lines");
                 }
                 String url = split[0];
                 String md5 = split[1];
@@ -100,12 +101,17 @@ public class TFGraphTestZooModels {
                 } else if(filename.endsWith(".tar.gz") || filename.endsWith(".tgz")){
                     List<String> files = ArchiveUtils.tarGzListFiles(localFile);
                     String toExtract = null;
-                    for(String f : files){
-                        if(f.endsWith(".pb")){
-                            if(toExtract != null){
-                                throw new IllegalStateException("Found multiple .pb files in archive: " + toExtract + " and " + f);
+                    if(split.length == 3){
+                        //Extract specific file
+                        toExtract = split[2];
+                    } else {
+                        for (String f : files) {
+                            if (f.endsWith(".pb")) {
+                                if (toExtract != null) {
+                                    throw new IllegalStateException("Found multiple .pb files in archive: " + toExtract + " and " + f);
+                                }
+                                toExtract = f;
                             }
-                            toExtract = f;
                         }
                     }
                     Preconditions.checkState(toExtract != null, "Found to .pb files in archive: %s", localFile.getAbsolutePath());
@@ -114,7 +120,7 @@ public class TFGraphTestZooModels {
                     modelFile = new File(currentTestDir, "tf_model.pb");
                     ArchiveUtils.tarGzExtractSingleFile(localFile, modelFile, toExtract);
                 } else if(filename.endsWith(".zip")){
-                    throw new IllegalStateException("Not yet implemented");
+                    throw new IllegalStateException("ZIP support - not yet implemented");
                 } else {
                     throw new IllegalStateException("Unknown format: " + filename);
                 }
@@ -148,14 +154,9 @@ public class TFGraphTestZooModels {
 
     @Test   //(timeout = 360000L)
     public void testOutputOnly() throws Exception {
-//        if(!modelName.equals("mobilenet_v1_0.5_128")){
-//        if(!modelName.equals("nasnet_mobile_2018_04_27")){
-//        if(!modelName.equals("resnetv2_imagenet_frozen_graph")){
-//        if(!modelName.equals("mobilenet_v2_1.0_224")){
-//        if(!modelName.equals("densenet_2018_04_27")){
-//        if(!modelName.equals("inception_resnet_v2_2018_04_27")){
-//            OpValidationSuite.ignoreFailing();
-//        }
+        if(!modelName.equals("ssd_mobilenet_v1_coco_2018_01_28")){
+            OpValidationSuite.ignoreFailing();
+        }
         currentTestDir = testDir.newFolder();
 
         Nd4j.getExecutioner().setProfilingMode(OpExecutioner.ProfilingMode.NAN_PANIC);
