@@ -155,7 +155,7 @@ public class VoidConfiguration implements Serializable {
      * Measured in milliseconds.
      */
     @Builder.Default
-    private long retransmitTimeout = 1000;
+    private long retransmitTimeout = 500;
 
     /**
      * This variable defines, how long transport should wait for response on specific messages.
@@ -180,7 +180,7 @@ public class VoidConfiguration implements Serializable {
      * This variable defines max chunk size for INDArray splits
      */
     @Builder.Default
-    private int maxChunkSize = 65536;
+    private int maxChunkSize = 1310720;
 
     /**
      * This variable defines max number of allowed reconnects per node
