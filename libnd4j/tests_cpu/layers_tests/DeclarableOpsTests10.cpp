@@ -1830,6 +1830,68 @@ TEST_F(DeclarableOpsTests10, ImageResizeNeighbor_Test1) {
     //expected.printIndexedBuffer("Expect for 4x5");
     ASSERT_TRUE(expected.isSameShape(result));
     ASSERT_TRUE(expected.equalsTo(result));
+
+    delete results;
+}
+
+////////////////////////////////////////////////////////////////////
+TEST_F(DeclarableOpsTests10, ReduceLogSumExpTest_1) {
+
+    NDArray<float> input   ('c', {3,3}, {0, 1, 0, 0, 1, 0, 0, 0, 0});
+
+    NDArray<float> expected(2.5206409f);
+
+    nd4j::ops::reduce_logsumexp<float> op;
+    auto results = op.execute({&input}, {}, {});
+
+    ASSERT_EQ(ND4J_STATUS_OK, results->status());
+
+    auto result = results->at(0);
+
+    ASSERT_TRUE(expected.isSameShapeStrict(result));
+    ASSERT_TRUE(expected.equalsTo(result));
+
+    delete results;
+}
+
+////////////////////////////////////////////////////////////////////
+TEST_F(DeclarableOpsTests10, ReduceLogSumExpTest_2) {
+
+    NDArray<float> input   ('c', {3,3}, {0, 1, 0, 0, 1, 0, 0, 0, 0});
+
+    NDArray<float> expected({1.0986123f, 1.8619947f, 1.0986123f});
+
+    nd4j::ops::reduce_logsumexp<float> op;
+    auto results = op.execute({&input}, {}, {0});
+
+    ASSERT_EQ(ND4J_STATUS_OK, results->status());
+
+    auto result = results->at(0);
+//    result->printIndexedBuffer("REDUCE_LOGSUMEXP");
+//    expected.printIndexedBuffer("LSE EXPECTED");
+    ASSERT_TRUE(expected.isSameShapeStrict(result));
+    ASSERT_TRUE(expected.equalsTo(result));
+
+    delete results;
+}
+////////////////////////////////////////////////////////////////////
+TEST_F(DeclarableOpsTests10, ReduceLogSumExpTest_3) {
+
+    NDArray<float> input   ('c', {3,3}, {0, 1, 0, 0, 1, 0, 0, 0, 0});
+
+    NDArray<float> expected('c', {1,3}, {1.0986123f, 1.8619947f, 1.0986123f});
+
+    nd4j::ops::reduce_logsumexp<float> op;
+    auto results = op.execute({&input}, {1.f}, {0});
+
+    ASSERT_EQ(ND4J_STATUS_OK, results->status());
+
+    auto result = results->at(0);
+//    result->printIndexedBuffer("REDUCE_LOGSUMEXP");
+//    expected.printIndexedBuffer("LSE EXPECTED");
+    ASSERT_TRUE(expected.isSameShapeStrict(result));
+    ASSERT_TRUE(expected.equalsTo(result));
+
     delete results;
 }
 
@@ -2247,6 +2309,101 @@ TEST_F(DeclarableOpsTests10, Image_NonMaxSuppressing_2) {
 
     NDArray<float>* result = results->at(0);
 
+    ASSERT_TRUE(expected.isSameShapeStrict(result));
+    ASSERT_TRUE(expected.equalsTo(result));
+
+    delete results;
+}
+
+////////////////////////////////////////////////////////////////////
+TEST_F(DeclarableOpsTests10, Image_CropAndResize_1) {
+
+    NDArray<float> images   ('c', {1,2,2,1}, {1,2,3,4});
+    NDArray<float> boxes('c', {1,4}, {0,0,1,1});
+    NDArray<float> boxI('c', {1}, {0});
+    NDArray<float> cropSize({1.f, 1.f});
+
+    //NDArray<float> ('c', {6}, {0.9f, .75f, .6f, .95f, .5f, .3f});
+    NDArray<float> expected('c', {1,1,1,1}, {2.5f});
+
+    nd4j::ops::crop_and_resize<float> op;
+    auto results = op.execute({&images, &boxes, &boxI, &cropSize}, {}, {});
+
+    ASSERT_EQ(ND4J_STATUS_OK, results->status());
+
+    NDArray<float>* result = results->at(0);
+    result->printIndexedBuffer("Cropped and Resized");
+    ASSERT_TRUE(expected.isSameShapeStrict(result));
+    ASSERT_TRUE(expected.equalsTo(result));
+
+    delete results;
+}
+
+////////////////////////////////////////////////////////////////////
+TEST_F(DeclarableOpsTests10, Image_CropAndResize_2) {
+
+    NDArray<float> images   ('c', {1,2,2,1}, {1,2,3,4});
+    NDArray<float> boxes('c', {1,4}, {0,0,1,1});
+    NDArray<float> boxI('c', {1}, {0});
+    NDArray<float> cropSize({1.f, 1.f});
+
+    //NDArray<float> ('c', {6}, {0.9f, .75f, .6f, .95f, .5f, .3f});
+    NDArray<float> expected('c', {1,1,1,1}, {4.f});
+
+    nd4j::ops::crop_and_resize<float> op;
+    auto results = op.execute({&images, &boxes, &boxI, &cropSize}, {}, {1});
+
+    ASSERT_EQ(ND4J_STATUS_OK, results->status());
+
+    NDArray<float>* result = results->at(0);
+    result->printIndexedBuffer("Cropped and Resized");
+    ASSERT_TRUE(expected.isSameShapeStrict(result));
+    ASSERT_TRUE(expected.equalsTo(result));
+
+    delete results;
+}
+
+////////////////////////////////////////////////////////////////////
+TEST_F(DeclarableOpsTests10, Image_CropAndResize_3) {
+
+    NDArray<float> images   ('c', {1,2,2,1}, {1,2,3,4});
+    NDArray<float> boxes('c', {1,4}, {0,0,1,1});
+    NDArray<float> boxI('c', {1}, {0});
+    NDArray<float> cropSize({3.f, 3.f});
+
+    //NDArray<float> ('c', {6}, {0.9f, .75f, .6f, .95f, .5f, .3f});
+    NDArray<float> expected('c', {1,3,3,1}, {1, 1.5f, 2., 2.f, 2.5f, 3.f, 3.f, 3.5f, 4.f});
+
+    nd4j::ops::crop_and_resize<float> op;
+    auto results = op.execute({&images, &boxes, &boxI, &cropSize}, {}, {0});
+
+    ASSERT_EQ(ND4J_STATUS_OK, results->status());
+
+    NDArray<float>* result = results->at(0);
+    result->printIndexedBuffer("Cropped and Resized");
+    ASSERT_TRUE(expected.isSameShapeStrict(result));
+    ASSERT_TRUE(expected.equalsTo(result));
+
+    delete results;
+}
+////////////////////////////////////////////////////////////////////
+TEST_F(DeclarableOpsTests10, Image_CropAndResize_4) {
+
+    NDArray<float> images   ('c', {1,2,2,1}, {1,2,3,4});
+    NDArray<float> boxes('c', {1,4}, {0,0,1,1});
+    NDArray<float> boxI('c', {1}, {0});
+    NDArray<float> cropSize({3.f, 3.f});
+
+    //NDArray<float> ('c', {6}, {0.9f, .75f, .6f, .95f, .5f, .3f});
+    NDArray<float> expected('c', {1,3,3,1}, {1, 2.f, 2.f, 3.f, 4, 4.f, 3.f, 4.f, 4.f});
+
+    nd4j::ops::crop_and_resize<float> op;
+    auto results = op.execute({&images, &boxes, &boxI, &cropSize}, {}, {1});
+
+    ASSERT_EQ(ND4J_STATUS_OK, results->status());
+
+    NDArray<float>* result = results->at(0);
+    result->printIndexedBuffer("Cropped and Resized");
     ASSERT_TRUE(expected.isSameShapeStrict(result));
     ASSERT_TRUE(expected.equalsTo(result));
 
