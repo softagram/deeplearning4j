@@ -32,9 +32,8 @@ import org.deeplearning4j.optimize.api.TrainingListener;
 import org.deeplearning4j.optimize.listeners.SleepyTrainingListener;
 import org.deeplearning4j.optimize.solvers.accumulation.EncodedGradientsAccumulator;
 import org.deeplearning4j.optimize.solvers.accumulation.EncodingHandler;
-import org.deeplearning4j.optimize.solvers.accumulation.MessageHandler;
+import org.deeplearning4j.optimize.solvers.accumulation.IndexedTail;
 import org.deeplearning4j.optimize.solvers.accumulation.encoding.ThresholdAlgorithm;
-import org.deeplearning4j.optimize.solvers.accumulation.SmartFancyBlockingQueue;
 import org.deeplearning4j.parallelism.ParallelWrapper;
 import org.deeplearning4j.spark.parameterserver.conf.SharedTrainingConfiguration;
 import org.deeplearning4j.spark.parameterserver.iterators.VirtualDataSetIterator;
@@ -82,7 +81,6 @@ public class SharedTrainingWrapper {
     protected ParallelWrapper wrapper;
     protected VirtualDataSetIterator iteratorDS;
     protected VirtualMultiDataSetIterator iteratorMDS;
-
     protected List<Iterator<DataSet>> iteratorsDS;
     protected List<Iterator<MultiDataSet>> iteratorsMDS;
 
@@ -142,7 +140,7 @@ public class SharedTrainingWrapper {
      * @param iterator
      */
     public void attachDS(Iterator<DataSet> iterator) {
-        log.debug("Attaching thread...");
+        log.info("Attaching thread...");
 
         //Count the number of minibatches - used for reporting/debugging purposes
         if(iteratorDataSetCount.get() == null)
@@ -170,7 +168,7 @@ public class SharedTrainingWrapper {
      * @param iterator
      */
     public void attachMDS(Iterator<MultiDataSet> iterator) {
-        log.debug("Attaching thread...");
+        log.info("Attaching thread...");
 
         //Count the number of minibatches - used for reporting/debugging purposes
         if(iteratorDataSetCount.get() == null)
@@ -193,6 +191,16 @@ public class SharedTrainingWrapper {
     }
 
     public SharedTrainingResult run(SharedTrainingWorker worker) {
+        try{
+            return runHelper(worker);
+        } finally {
+            //Clear workspaces (if any) to avoid excessive memory use if not using PW and master thread is reused
+            // in a later epoch
+            Nd4j.getWorkspaceManager().destroyAllWorkspacesForCurrentThread();
+        }
+    }
+
+    protected SharedTrainingResult runHelper(SharedTrainingWorker worker) {
         /*
             first call instantiates pw, messenger etc, and gets in charge here.
          */
@@ -207,9 +215,9 @@ public class SharedTrainingWrapper {
             Model model = null;
 
             /*
-                    Plan is simple here: if there's defined field in SharedTrainingConfiguration - use that.
-                    If no - try to guess something
-                 */
+            Plan is simple here: if there's defined field in SharedTrainingConfiguration - use that.
+            If no - try to guess something
+            */
             int numDevices = Nd4j.getAffinityManager().getNumberOfDevices();
 
             int numCores = Loader.totalCores();
@@ -221,8 +229,8 @@ public class SharedTrainingWrapper {
              * 3) otherwise, let's assume that's regular multi-core node, so we'll use 1..6 workers, depending on number of cores/4
              */
             int numWorkers = trainingConfiguration.getNumberOfWorkersPerNode() > 0
-                            ? trainingConfiguration.getNumberOfWorkersPerNode()
-                            : numDevices > 1 ? numDevices : Math.min(6, Math.max(1, numCores / 4));
+                    ? trainingConfiguration.getNumberOfWorkersPerNode()
+                    : numDevices > 1 ? numDevices : Math.min(6, Math.max(1, numCores / 4));
 
             if (numDevices > 1 && numWorkers > numDevices)
                 log.warn("WARNING! Using more workers then number of available computational devices!");
@@ -443,18 +451,21 @@ public class SharedTrainingWrapper {
                 consumer.bypassMode(false);
 
             // now we're just calling for fit
-            if(iteratorDS == null && iteratorMDS == null)
+            if(iteratorDS == null && iteratorMDS == null) //Should never happen
                 throw new DL4JInvalidConfigException("No iterators were defined for training");
 
             try {
-                while((iteratorDS != null && iteratorDS.hasNext()) || (iteratorMDS != null && iteratorMDS.hasNext())) {
+                while( (numWorkers == 1 && (iteratorDS != null && iteratorDS.hasNext()) || (iteratorMDS != null && iteratorMDS.hasNext())) ||
+                        (numWorkers > 1 && (iteratorsDS != null && !iteratorsDS.isEmpty()) || (iteratorsMDS != null && !iteratorsMDS.isEmpty()))) {
                     //Loop as a guard against concurrent modifications and RCs
 
+                    //System.out.println("iteratorsDS: " + (iteratorsDS == null ? "null" : iteratorsDS.size()));
                     if (wrapper != null) {
-                        if (iteratorDS != null)
-                            wrapper.fit(iteratorDS);
+                        if (iteratorsDS != null)
+                            wrapper.fit(iteratorsDS);
                         else
-                            wrapper.fit(iteratorMDS);
+                            throw new UnsupportedOperationException("Not yet reimplemented");
+//                            wrapper.fit(iteratorMDS);
                     } else {
                         // if wrapper is null, we're fitting standalone model then
                         if (iteratorDS != null) {
@@ -472,7 +483,8 @@ public class SharedTrainingWrapper {
                         }
                     }
 
-                    consumer.getUpdatesQueue().purge();
+                    if(consumer != null)
+                        consumer.getUpdatesQueue().purge();
                 }
             } catch (Throwable t){
                 log.warn("Exception encountered during fit operation", t);

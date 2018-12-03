@@ -107,11 +107,11 @@ public class IndexedTail {
 
                 // looking for max common non-applied update
                 long maxIdx = firstNotAppliedIndexEverywhere();
-                val array = Nd4j.create(shape);
 
                 val delta = lastUpdateIndex - maxIdx;
                 if (delta >= collapseThreshold) {
                     log.info("Max delta to collapse: {}; Range: <{}...{}>", delta, maxIdx, lastUpdateIndex);
+                    val array = Nd4j.create(shape);
                     for (long e = maxIdx; e < lastUpdateIndex; e++) {
                         val u = updates.get(e);
                         if (u == null)
@@ -278,7 +278,11 @@ public class IndexedTail {
 
         // now we decompress all arrays within delta into provided array
         for (val u:sessionUpdates) {
-            smartDecompress(u.unsafeDuplication(true), array);
+            // we're skipping unsafeDuplication() if updates are on the same device as we are at this moment
+            if (Nd4j.getAffinityManager().getDeviceForCurrentThread().intValue() == Nd4j.getAffinityManager().getDeviceForArray(u).intValue())
+                smartDecompress(u, array);
+            else
+                smartDecompress(u.unsafeDuplication(true), array);
         }
 
 

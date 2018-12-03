@@ -31,6 +31,7 @@ import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -245,6 +246,44 @@ public class AsyncDataSetIterator implements DataSetIterator {
     }
 
     /**
+     * Perform a 'soft' reset.
+     * NOTE: THIS SHOULD NOT BE USED UNDER NORMAL CIRCUMSTANCES.
+     * A 'soft' reset is used when the underlying iterator has more elements after returning hasNext() == false previously.
+     * This is used for Spark training when backed by a virtual iterator that periodically has more data added to it.
+     * Unlike a 'normal' reset
+     * (a) this can only be done when the backing iterator now has more elements
+     * (b) the backing iterator is *not* reset
+     *
+     */
+    public void softReset(){
+        if(this.thread != null && this.thread.isAlive())
+            return; //No op
+
+        if(!backedIterator.hasNext())
+            throw new IllegalStateException("Cannot soft reset: backing iterator does not have any more elements");
+
+        List<DataSet> unprocessed = new ArrayList<>();
+        buffer.drainTo(unprocessed);
+        nextElement = null;
+        for(DataSet ds : unprocessed){
+            if(ds != terminator){
+                buffer.add(ds);
+                if(nextElement == null)
+                    nextElement = ds;
+            }
+        }
+
+        shouldWork.set(true);
+        this.thread = new AsyncPrefetchThread(buffer, backedIterator, terminator, null);
+        Nd4j.getAffinityManager().attachThreadToDevice(thread, deviceId);
+        thread.setDaemon(true);
+        hasDepleted.set(false);
+        this.thread.start();
+        log.info("SOFT RESET COMPLETE. HAS NEXT: " + hasNext());
+    }
+
+
+    /**
      * This method will terminate background thread AND will destroy attached workspace (if any)
      *
      * PLEASE NOTE: After shutdown() call, this instance can't be used anymore
@@ -336,7 +375,7 @@ public class AsyncDataSetIterator implements DataSetIterator {
 
             return true;
         } catch (Exception e) {
-            log.error("Premature end of loop!");
+            log.error("Premature end of AsyncDataSetIterator loop!");
             throw new RuntimeException(e);
         }
     }
