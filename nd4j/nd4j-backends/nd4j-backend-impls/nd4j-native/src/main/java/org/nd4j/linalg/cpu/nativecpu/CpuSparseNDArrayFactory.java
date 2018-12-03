@@ -22,10 +22,12 @@ import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.ndarray.BaseSparseNDArrayCOO;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ndarray.SparseFormat;
+import org.nd4j.linalg.api.shape.Shape;
 import org.nd4j.linalg.cpu.nativecpu.blas.*;
 import org.nd4j.linalg.factory.BaseSparseNDArrayFactory;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.primitives.Pair;
+import org.nd4j.linalg.util.ArrayUtil;
 import org.nd4j.nativeblas.LongPointerWrapper;
 import org.nd4j.nativeblas.NativeOpsHolder;
 
@@ -498,6 +500,59 @@ public class CpuSparseNDArrayFactory extends BaseSparseNDArrayFactory {
         }
 
         return array;
+    }
+
+    @Override
+    public INDArray ravelCooIndices(INDArray x, char clipMode) {
+        if(x.getFormat() != SparseFormat.COO){
+            throw new UnsupportedOperationException("Not a COO ndarray");
+        }
+
+        int clipModeNative;
+        switch (clipMode){
+            case 't':
+                clipModeNative = 0;
+                break;
+            case 'w':
+                clipModeNative = 1;
+                break;
+            case 'c':
+                clipModeNative = 2;
+                break;
+            default:
+                throw new IllegalArgumentException("clipMode must be one of 't', 'w', or 'c' ");
+        }
+
+        BaseSparseNDArrayCOO array = (BaseSparseNDArrayCOO) x;
+        DataBuffer indices = Nd4j.createBuffer(new long[]{array.length()}, array.getIndices().dataType());
+        NativeOpsHolder.getInstance().getDeviceNativeOps()
+                .ravelMultiIndex(null,
+                        (LongPointer) array.getIndices().addressPointer(),
+                        (LongPointer) indices.addressPointer(),
+                        array.length(),
+                        (LongPointer) array.shapeInfoDataBuffer().addressPointer(),
+                        clipModeNative
+                        );
+
+        return createSparseCOO(array.getValues(), indices, new long[]{ArrayUtil.prod(array.shape())});
+    }
+
+    @Override
+    public INDArray unravelCooIndices(INDArray x, DataBuffer shapeInfo) {
+        if(x.getFormat() != SparseFormat.COO){
+            throw new UnsupportedOperationException("Not a COO ndarray");
+        }
+
+        BaseSparseNDArrayCOO array = (BaseSparseNDArrayCOO) x;
+        DataBuffer indices = Nd4j.createBuffer(new long[]{array.length(), Shape.rank(shapeInfo)}, array.getIndices().dataType());
+        NativeOpsHolder.getInstance().getDeviceNativeOps()
+                .unravelIndex(null,
+                        (LongPointer) indices.addressPointer(),
+                        (LongPointer) array.getIndices().addressPointer(),
+                        array.length(),
+                        (LongPointer) shapeInfo.addressPointer()
+                );
+        return createSparseCOO(array.getValues(), indices, Shape.shape(shapeInfo));
     }
 
     @Override

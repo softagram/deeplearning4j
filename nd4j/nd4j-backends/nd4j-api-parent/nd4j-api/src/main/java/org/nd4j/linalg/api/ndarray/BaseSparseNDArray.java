@@ -419,7 +419,7 @@ public abstract class BaseSparseNDArray implements ISparseNDArray {
     }
 
     @Override
-    public int[] sparseOffsets() {
+    public long[] sparseOffsets() {
         return Shape.sparseOffsets(sparseInformation);
     }
 
@@ -1508,7 +1508,7 @@ public abstract class BaseSparseNDArray implements ISparseNDArray {
 
     @Override
     public INDArray ravel() {
-        return null;
+        return Nd4j.sparseFactory().ravelCooIndices(this, 't');
     }
 
     @Override
@@ -1641,7 +1641,7 @@ public abstract class BaseSparseNDArray implements ISparseNDArray {
      */
     @Override
     public boolean isVector() {
-        return isRowVector() || isColumnVector();
+        return rank == 1 || isRowVector() || isColumnVector();
     }
 
     @Override
@@ -1786,8 +1786,9 @@ public abstract class BaseSparseNDArray implements ISparseNDArray {
             return false;
 
         if (isScalar() && n.isScalar()) {
-            // TODO
-        } else if (isVector && n.isVector()) {
+            double diff = getDouble(0) - n.getDouble(0);
+            return Math.abs(diff) < eps;
+        } else if (isVector() && n.isVector()) {
             // TODO
         }
         if (!Arrays.equals(this.shape(), n.shape()))

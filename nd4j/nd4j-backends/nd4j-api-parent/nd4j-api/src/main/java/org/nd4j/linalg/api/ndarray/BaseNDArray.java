@@ -6327,7 +6327,7 @@ public abstract class BaseNDArray implements INDArray, Iterable {
     }
 
     @Override
-    public int[] sparseOffsets() {
+    public long[] sparseOffsets() {
         throw new UnsupportedOperationException("Not a sparse ndarray");
     }
 

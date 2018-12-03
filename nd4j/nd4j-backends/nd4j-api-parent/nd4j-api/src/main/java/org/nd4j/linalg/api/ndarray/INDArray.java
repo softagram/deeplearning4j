@@ -2780,7 +2780,7 @@ public interface INDArray extends Serializable {
 
     int[] hiddenDimensions();
 
-    int[] sparseOffsets();
+    long[] sparseOffsets();
 
     int underlyingRank();
 
